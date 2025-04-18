@@ -118,14 +118,14 @@ def information_gain(left_child, right_child):
 
 
 class DecisionTree:
-    def __init__(self, x=X_tr, y=Y_tr, max_depth=5, min_samples_split=30):
+    def __init__(self, x=X_tr, y=Y_tr, max_depth=5, min_samples_split=50):
         self.max_depth = max_depth
         self.min_samples_split = min_samples_split
 
         # ===== subset of features for each tree =====
         fts_len = len(features)
         fts_indices = range(0, fts_len)
-        n_fts = round(fts_len * .85)
+        n_fts = round(fts_len * .65)
         self.fts = np.random.choice(fts_indices, n_fts, replace=False)
 
         # ===== bagging =====
@@ -138,7 +138,7 @@ class DecisionTree:
 
         x_len = len(x)
         bootstrap_indices = list(
-            set((np.random.choice(range(x_len), x_len, replace=True))))
+            (np.random.choice(range(x_len), x_len, replace=True)))
         # out-of-bag, for validation
         # oob_indices = [i for i in range(len(x)) if i not in bootstrap_indices]
         # self.X_oob = x[oob_indices]
@@ -159,7 +159,7 @@ class DecisionTree:
 
         self.the_loop()
 
-    def find_best_split(self, feature_index, x):
+    def find_best_split(self, feature_index, x, y):
         best_split = None
         ig_max = -9999
 
@@ -169,8 +169,8 @@ class DecisionTree:
             left_mask = x[:, feature_index] <= split
             right_mask = x[:, feature_index] > split
 
-            left = x[left_mask]
-            right = x[right_mask]
+            left = y[left_mask]
+            right = y[right_mask]
 
             ig = information_gain(left, right)
 
@@ -201,7 +201,7 @@ class DecisionTree:
         }
 
         for ft_index in self.fts:
-            self.find_best_split(ft_index, x)
+            self.find_best_split(ft_index, x, y)
 
         for split in self.splits:
             ft_idx, ig, split_value = split
@@ -257,8 +257,11 @@ class DecisionTree:
             return self.predict(data, right_node, depth=depth+1)
 
 
-def forest(n_trees=50):
-    data = X_test
+def forest(n_trees=90):
+    x = X_test
+    y = Y_test
+    print(x.shape, y.shape)
+    data = x[:30]
     g_preds = []
     for j, d in enumerate(data):
         preds = []
@@ -266,11 +269,13 @@ def forest(n_trees=50):
         for i in range(0, n_trees):
             tree = DecisionTree()
             prediction = tree.predict(d)
+            print(prediction)
             preds.append(prediction)
 
         g_preds.append((torch.tensor(preds).mean() > 0.5).item()
-                       == bool(Y_test[i].item()))
+                       == bool(y[j].item()))
     g_preds = torch.tensor(g_preds).to(dtype=torch.float)
+    print(g_preds)
     print(g_preds.mean())
 
 
