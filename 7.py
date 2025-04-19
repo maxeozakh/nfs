@@ -27,7 +27,8 @@ y_range_which_make_sense = (1, 6)
 y_range_from_book = (0, 5.5)
 
 
-class DotProductBias(Module):
+class DotProductBias_(Module):
+    # built-in Embedding
     def __init__(self,
                  n_users, n_movies, n_factors,
                  y_range=y_range_which_make_sense):
@@ -49,7 +50,33 @@ class DotProductBias(Module):
         return sigmoid_range(res, *self.y_range)
 
 
+def create_params(size):
+    return nn.Parameter(torch.zeros(*size).normal_(0, 0.01))
+
+
+class DotProductBias(Module):
+    # Our own embedding
+    def __init__(self,
+                 n_users, n_movies, n_factors,
+                 y_range=y_range_which_make_sense):
+        #  y_range=y_range_from_book):
+
+        self.user_factors = create_params([n_users, n_factors])
+        self.movie_factors = create_params([n_movies, n_factors])
+
+        self.user_bias = create_params([n_users])
+        self.movie_bias = create_params([n_movies])
+
+        self.y_range = y_range
+
+    def forward(self, x):
+        users = self.user_factors[x[:, 0]]
+        movies = self.movie_factors[x[:, 1]]
+        res = (users * movies).sum(dim=1)
+        res += self.user_bias[x[:, 0]] + self.movie_bias[x[:, 1]]
+        return sigmoid_range(res, *self.y_range)
+
+
 model = DotProductBias(n_users, n_movies, n_factors)
 learn = Learner(dls, model, loss_func=MSELossFlat())
-
 learn.fit_one_cycle(5, 5e-3, wd=0.1)
