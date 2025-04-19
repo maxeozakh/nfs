@@ -1,5 +1,6 @@
 from fastai.collab import *
 from fastai.tabular.all import *
+import os
 
 # if __name__ == '__main__':
 set_seed(42)
@@ -79,4 +80,21 @@ class DotProductBias(Module):
 
 model = DotProductBias(n_users, n_movies, n_factors)
 learn = Learner(dls, model, loss_func=MSELossFlat())
-learn.fit_one_cycle(5, 5e-3, wd=0.1)
+retrain = False
+
+MODEL_PATH = path/'models/dot_model.pth'
+os.makedirs(path/'models', exist_ok=True)
+if MODEL_PATH.exists() and not retrain:
+    state = torch.load(MODEL_PATH)
+    learn.model.load_state_dict(state)
+    print("Loaded saved model—skipping training.")
+else:
+    learn.fit_one_cycle(5, 5e-3, wd=0.1)
+    torch.save(learn.model.state_dict(), MODEL_PATH)
+    print("Trained and saved model.")
+
+movie_bias = learn.model.movie_bias.squeeze()
+idxs = movie_bias.argsort(descending=True)[:15]
+classics = [dls.classes['title'][i] for i in idxs]
+
+print(classics)
