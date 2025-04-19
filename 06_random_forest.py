@@ -42,7 +42,7 @@ features = ['Pclass', 'Sex', 'Age', 'SibSp', 'Parch', 'Fare']
 
 df['Sex'] = df['Sex'].map({'male': 1, 'female': 0}).astype('Int8')
 
-train_index = int(np.floor(0.9 * len(df)))
+train_index = int(np.floor(0.8 * len(df)))
 
 X_tr = df[features][:train_index]
 Y_tr = df['Survived'][:train_index].values
@@ -125,7 +125,7 @@ class DecisionTree:
         # ===== subset of features for each tree =====
         fts_len = len(features)
         fts_indices = range(0, fts_len)
-        n_fts = round(fts_len * .65)
+        n_fts = round(fts_len * .3)
         self.fts = np.random.choice(fts_indices, n_fts, replace=False)
 
         # ===== bagging =====
@@ -139,10 +139,6 @@ class DecisionTree:
         x_len = len(x)
         bootstrap_indices = list(
             (np.random.choice(range(x_len), x_len, replace=True)))
-        # out-of-bag, for validation
-        # oob_indices = [i for i in range(len(x)) if i not in bootstrap_indices]
-        # self.X_oob = x[oob_indices]
-        # self.y_oob = y[oob_indices]
         self.x = x[bootstrap_indices]
         self.y = y[bootstrap_indices]
 
@@ -157,7 +153,8 @@ class DecisionTree:
 
         self.global_ig = -999
 
-        self.the_loop()
+        tree = self.create_node(self.x, self.y)
+        self.tree = tree
 
     def find_best_split(self, feature_index, x, y):
         best_split = None
@@ -187,8 +184,6 @@ class DecisionTree:
     def create_node(self, x, y):
         assert self.counter < 1999, f"Woooooooo {len(self.nodes)}"
         self.counter += 1
-
-        # print(f'===== {self.counter} =====')
 
         node = {
             'ft_idx': None,
@@ -230,11 +225,6 @@ class DecisionTree:
 
         return node
 
-    def the_loop(self):
-        tree = self.create_node(self.x, self.y)
-        self.tree = tree
-        # print(f'tree: {tree}')
-
     def predict(self, data, node=None, depth=0):
         if node is None:
             node = self.tree
@@ -260,80 +250,18 @@ class DecisionTree:
 def forest(n_trees=90):
     x = X_test
     y = Y_test
-    print(x.shape, y.shape)
-    data = x[:30]
+    data = x
     g_preds = []
-    for j, d in enumerate(data):
-        preds = []
-        print(j)
-        for i in range(0, n_trees):
-            tree = DecisionTree()
-            prediction = tree.predict(d)
-            print(prediction)
-            preds.append(prediction)
 
+    trees = [DecisionTree() for _ in range(0, n_trees)]
+
+    for j, d in enumerate(data):
+        preds = [trees[i].predict(d) for i in range(0, n_trees)]
         g_preds.append((torch.tensor(preds).mean() > 0.5).item()
                        == bool(y[j].item()))
+
     g_preds = torch.tensor(g_preds).to(dtype=torch.float)
-    print(g_preds)
-    print(g_preds.mean())
+    print(f"accuracy: {g_preds.mean().item():.2f}")
 
 
 forest()
-
-# def the_loop2(self):
-#     assert self.counter < 100, "Woooooooo"
-
-#     if self.branches.empty():
-#         print('done', len(self.nodes))
-#         return self.nodes
-
-#     assert len(self.splits) == 0, "Splits are filled in before we even start"
-
-#     x, depth = self.branches.get()
-#     print(f"===== loop {self.counter} =====")
-#     for ft_index in self.fts:
-#         self.find_best_split(ft_index, x)
-
-#     # splits -> best split -> node
-#     best_ig = -999
-#     node = {'ft_index': None, 'split_value': None,
-#             'ft': None, 'left': None, 'right': None, 'ig': -999}
-
-#     for split in self.splits:
-#         ft_index, ig, split_value = split
-#         if (ig > node['ig']):
-#             node['ft_index'] = ft_index
-#             node['ft'] = features[ft_index]
-#             node['split_value'] = split_value
-#             node['ig'] = ig
-#             node['id'] = self.node_id
-#             self.node_id += 1
-
-#     # if best_ig > self.global_ig:
-#     #     self.global_ig = best_ig
-#     #     self.the_way = copy.deepcopy(self.nodes)
-
-#     if depth != self.max_depth:
-#         split_value = node['split_value']
-#         ft_index = node['ft_index']
-#         left_mask_x = x[:, ft_index] <= split_value
-#         right_mask_x = x[:, ft_index] > split_value
-
-#         x_left = x[left_mask_x]
-#         x_right = x[right_mask_x]
-
-#         if x_left.shape[0] > 0:
-#             node['left'] = x_left
-#             left_branch = [x_left, depth+1]
-#             self.branches.put(left_branch)
-#         if x_right.shape[0] > 0:
-#             node['right'] = x_right
-#             right_branch = [x_right, depth+1]
-#             self.branches.put(right_branch)
-
-#     self.splits = []
-#     self.nodes.append(node)
-
-#     self.counter += 1
-#     self.the_loop()
