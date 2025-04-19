@@ -96,5 +96,7 @@ else:
 movie_bias = learn.model.movie_bias.squeeze()
 idxs = movie_bias.argsort(descending=True)[:15]
 classics = [dls.classes['title'][i] for i in idxs]
+idxs = movie_bias.argsort()[:15]
+craplol = [dls.classes['title'][i] for i in idxs]
 
-print(classics)
+print('classics:', classics, '\n', '\n', 'not classic:', craplol)
