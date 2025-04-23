@@ -28,35 +28,11 @@ y_range_which_make_sense = (1, 6)
 y_range_from_book = (0, 5.5)
 
 
-class DotProductBias_(Module):
-    # built-in Embedding
-    def __init__(self,
-                 n_users, n_movies, n_factors,
-                 y_range=y_range_which_make_sense):
-        #  y_range=y_range_from_book):
-
-        self.user_factors = Embedding(n_users, n_factors)
-        self.movie_factors = Embedding(n_movies, n_factors)
-
-        self.user_bias = Embedding(n_users, 1)
-        self.movie_bias = Embedding(n_movies, 1)
-
-        self.y_range = y_range
-
-    def forward(self, x):
-        users = self.user_factors(x[:, 0])
-        movies = self.movie_factors(x[:, 1])
-        res = (users * movies).sum(dim=1, keepdim=True)
-        res += self.user_bias(x[:, 0]) + self.movie_bias(x[:, 1])
-        return sigmoid_range(res, *self.y_range)
-
-
 def create_params(size):
     return nn.Parameter(torch.zeros(*size).normal_(0, 0.01))
 
 
 class DotProductBias(Module):
-    # Our own embedding
     def __init__(self,
                  n_users, n_movies, n_factors,
                  y_range=y_range_which_make_sense):
@@ -71,16 +47,20 @@ class DotProductBias(Module):
         self.y_range = y_range
 
     def forward(self, x):
-        users = self.user_factors[x[:, 0]]
-        movies = self.movie_factors[x[:, 1]]
+        user_ids = x[:, 0]
+        movie_ids = x[:, 1]
+
+        users = self.user_factors[user_ids]
+        movies = self.movie_factors[movie_ids]
         res = (users * movies).sum(dim=1)
-        res += self.user_bias[x[:, 0]] + self.movie_bias[x[:, 1]]
+        res += self.user_bias[user_ids] + self.movie_bias[movie_ids]
+
         return sigmoid_range(res, *self.y_range)
 
 
 model = DotProductBias(n_users, n_movies, n_factors)
 learn = Learner(dls, model, loss_func=MSELossFlat())
-retrain = False
+retrain = True
 
 MODEL_PATH = path/'models/dot_model.pth'
 os.makedirs(path/'models', exist_ok=True)
